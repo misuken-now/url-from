@@ -1,0 +1,26 @@
+{
+  "name": "url-from",
+  "version": "0.0.0",
+  "description": "",
+  "main": "./lib/index.js",
+  "module": "./module/index.js",
+  "typings": "./lib/index.d.ts",
+  "files": [
+    "lib",
+    "module"
+  ],
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/misuken-now/url-from.git"
+  },
+  "author": "misuken",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/misuken-now/url-from/issues"
+  },
+  "homepage": "https://github.com/misuken-now/url-from#readme",
+  "devDependencies": {
+  }
+}
