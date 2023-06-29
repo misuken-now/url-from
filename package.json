@@ -1,7 +1,17 @@
 {
   "name": "url-from",
   "version": "0.0.0",
-  "description": "",
+  "description": "Type-safe URL generator with RFC3986 encoding support",
+  "keywords": [
+    "url",
+    "query",
+    "querystring",
+    "rfc3986",
+    "typescript",
+    "typesafe",
+    "searchparams",
+    "encode"
+  ],
   "main": "./lib/index.js",
   "module": "./module/index.js",
   "typings": "./lib/index.d.ts",
@@ -14,8 +24,13 @@
     "build:lib": "tsc -p ./tsconfig.json",
     "build:module": "tsc -p ./tsconfig.module.json",
     "clean": "del-cli lib module",
-    "format": "prettier --write **/*.{ts,js,json,md}",
-    "test": "jest"
+    "format": "yarn format:write",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,yml,yaml,md,html}\"",
+    "format:write": "prettier --write \"**/*.{js,jsx,ts,tsx,json,yml,yaml,md,html}\"",
+    "test": "jest",
+    "versionup:major": "changelog -M && git add CHANGELOG.md && git commit -m 'updated CHANGELOG.md' && npm version major",
+    "versionup:minor": "changelog -m && git add CHANGELOG.md && git commit -m 'updated CHANGELOG.md' && npm version minor",
+    "versionup:patch": "changelog -p && git add CHANGELOG.md && git commit -m 'updated CHANGELOG.md' && npm version patch"
   },
   "repository": {
     "type": "git",
@@ -32,6 +47,7 @@
     "@power-doctest/tester": "^5.3.2",
     "@types/jest": "^29.2.5",
     "del-cli": "^5.0.0",
+    "generate-changelog": "^1.8.0",
     "globby": "^11.1.0",
     "jest": "^29.3.1",
     "prettier": "^2.8.2",
