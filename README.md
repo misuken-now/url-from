@@ -1,6 +1,6 @@
 # url-from
 
-型安全でパスやクエリの RFC3986 エンコードに対応した URL 生成ライブラリ。
+A URL generation library that supports type-safe path and query RFC3986 encoding.
 
 - [Usage]
 - [API]
@@ -8,21 +8,21 @@
 
 ## Highlight
 
-- 🔒 型安全なプレースホルダによる値の埋め込み
-- 🌐 パス、クエリ等、各コンポーネントで適切な RFC3986 エンコード
-- 😊 柔軟なスラッシュの管理
-- ⛑ lint のような警告によるアドバイス
-- 🔱 各種フォーマットをサポート
-  - 絶対 URL `https://example.com/`
+- 🔒 Embedding values with type-safe placeholders
+- 🌐 Proper RFC3986 encoding for each component such as path and query
+- 😊 Flexible management of slashes
+- ⛑ Advice through warnings, similar to lint
+- 🔱 Support for various formats
+  - Absolute URL `https://example.com/`
   - [Protocol-relative URL] `//example.com/`
-  - ルートパス `/path/to`
-  - 相対パス `path/to`
+  - Root path `/path/to`
+  - Relative path `path/to`
 
-url-from は依存するライブラリはありません。
+url-from has no external dependencies.
 
 ## Install
 
-このライブラリは TypeScript 4.7.2 以降で使用できます。
+This library can be used with TypeScript 4.7.2 or later.
 
 ```
 npm install url-from
@@ -47,11 +47,11 @@ const url2 = bindUrl({
 console.log(url2); // => "https://example.com/tags/%F0%9F%90%B9?foo=%21%27&bar=2&baz=false#%28%29%2A"
 ```
 
-ご利用にあたっては以下もご確認ください。
+Please also check the following when using this library:
 
-- [例外が出る主なパターンについて](#例外が出る主なパターンについて)
-- [警告が出る主なパターンについて](#警告が出る主なパターンについて)
-- [リテラル部分に`%`を含めると警告が出ます](#リテラル部分に--を含めると警告が出ます)
+- [Common Patterns for Throwing Exceptions](#main-patterns-that-cause-exceptions)
+- [Common Patterns for Emitting Warnings](#main-patterns-for-issuing-warnings)
+- [Literal Parts with `%` will Emit Warnings](#a-warning-is-issued-when--is-included-in-the-literal-part)
 
 ## API
 
@@ -66,8 +66,8 @@ console.log(url2); // => "https://example.com/tags/%F0%9F%90%B9?foo=%21%27&bar=2
 
 ### Bind Function
 
-`urlFrom` 自体は Bind Function を返す関数です。  
-Bind Function を呼び出すことで URL が生成されます。
+`urlFrom` itself is a function that returns a Bind Function.
+By calling the Bind Function, a URL is generated.
 
 ```js
 const bindUrl = urlFrom`users/${"userId:number"}`;
@@ -77,8 +77,8 @@ console.log(url1); // => "users/279"
 console.log(url2); // => "users/642#fragment"
 ```
 
-これは、URL の定義ファイルを作り、定義を使って各所で URL を生成できることを意味します。  
-Bind Function は [Type Narrowing] によって引数をリテラル型に制限する方法もあるので、これらを組み合わせると強力な URL 管理を実現できます。
+This means that you can create a URL definition file and use the definition to generate URLs in various places.
+The Bind Function also allows restricting arguments to literal types through [Type Narrowing], enabling powerful URL management.
 
 ### User Placeholder
 
@@ -105,7 +105,7 @@ const url = urlFrom`https://example.com/${"...paths"}`({ paths: ["path", "to"] }
 console.log(url); // => "https://example.com/path/to"
 ```
 
-セパレータを変更する場合。
+If you want to change the separator:
 
 ```js
 const url = urlFrom`https://example.com/${"...paths"}`({ paths: { value: ["path", "to"], separator: "-" } });
@@ -127,15 +127,14 @@ console.log(url); // => "https://example.com/path-to"
 Format: <code>${["value"]}</code><br />
 Value Type: `string | number`
 
-このプレースホルダを使用すると、リテラル文字列に直接エンコードされた文字列を埋め込めます。
+This placeholder allows you to directly embed a string that is encoded as a literal string.
 
 ```js
 const url = urlFrom`https://example.com/path/to/${["white space"]}`();
 console.log(url); // => "https://example.com/path/to/white%20space"
 ```
 
-このプレースホルダは値が必須として扱われるため、空文字を渡すべきではありません。  
-もしも、空文字を渡してしまうと例外が発生します。
+Since this placeholder treats the value as required, you should not pass an empty string. If you pass an empty string, an exception will be thrown.
 
 ```js
 try {
@@ -150,15 +149,15 @@ try {
 Format: <code>${"scheme://host"}</code> or <code>${"scheme://authority"}</code> (support placeholder options [Optional])<br />
 Value Type: `string`
 
-スキームからホスト(ポート)までの文字列を埋め込みます。  
-環境別にベース URL を切り替えたい用途向けです。
+- Embeds a string representing the portion from scheme to host (including port).
+- It is useful for switching base URLs depending on the environment.
 
 ```js
 const url = urlFrom`${"scheme://host"}/path/to`({ "scheme://host": "https://example.com" });
 console.log(url); // => "https://example.com/path/to"
 ```
 
-値にパスを含んでいると警告が出るので、パスを含める場合は[SchemeHostPath Placeholder]を使用してください。
+If you include a path in the value, a warning will be issued. In such cases, use the [SchemeHostPath Placeholder].
 
 ```js
 // Warn: The value of the placeholder "scheme://host" cannot contain a path.
@@ -167,35 +166,35 @@ const url = urlFrom`${"scheme://host"}/to`({ "scheme://host": "https://example.c
 console.log(url); // => "https://example.com/path/to"
 ```
 
-**⚠ 注意点**
+**⚠ Note:**
 
-- 必ず設定や定義などで用意した、静的な値を渡してください
-- 値に動的に連結した文字列を渡すことは脆弱性に繋がるため避けてください
-- ホスト部にユニコード、`%HH` 形式、IPv6 を含むと例外を投げます (将来的には対応する可能性があります)
-- userinfo 部に区切り文字以外の `:` や `@` を含める場合は、それぞれ `%3A` `%40` 変換してください
-- このプレースホルダの値には QueryString や Fragment を含めることが禁止されているため、`?`や`#`以降は無視されます
+- Always pass static values prepared in settings or definitions.
+- Avoid passing dynamically concatenated strings as values, as it can lead to vulnerabilities.
+- If the host part contains Unicode, `%HH` format, or IPv6, an exception will be thrown (future support may be added).
+- If you want to include characters other than the delimiter `:` or `@` in the userinfo part, convert them to `%3A` and `%40`, respectively.
+- The value of this placeholder should not include a QueryString or Fragment, so any characters after `?` or `#` will be ignored.
 
 #### SchemeHostPath
 
 Format: <code>${"scheme://host/path"}</code> or <code>${"scheme://authority/path"}</code><br />
 Value Type: `string`
 
-スキームからホストやパスまでの文字列を埋め込みます。  
-環境別にベース URL を切り替えたい用途向けです。
+- Embeds a string representing the portion from scheme to host or path.
+- It is useful for switching base URLs depending on the environment.
 
 ```js
 const url = urlFrom`${"scheme://host/path"}/to`({ "scheme://host/path": "https://example.com/path" });
 console.log(url); // => "https://example.com/path/to"
 ```
 
-**⚠ 注意点**
+**⚠ Note:**
 
-- 必ず設定や定義などで用意した、静的な値を渡してください
-- 値に動的に連結した文字列を渡すことは脆弱性に繋がるため避けてください
-- ホスト部にユニコード、`%HH` 形式、IPv6 を含むと例外を投げます (将来的には対応する可能性があります)
-- userinfo 部に区切り文字以外の `:` や `@` を含める場合は、それぞれ `%3A` `%40` 変換してください
-- このプレースホルダの値には QueryString や Fragment を含めることが禁止されているため、`?`や`#`以降は無視されます
-- このプレースホルダは必須のみ利用可能でオプショナルにはできません
+- Always pass static values prepared in settings or definitions.
+- Avoid passing dynamically concatenated strings as values, as it can lead to vulnerabilities.
+- If the host part contains Unicode, `%HH` format, or IPv6, an exception will be thrown (future support may be added).
+- If you want to include characters other than the delimiter `:` or `@` in the userinfo part, convert them to `%3A` and `%40`, respectively.
+- The value of this placeholder should not include a QueryString or Fragment, so any characters after `?` or `#` will be ignored.
+- This placeholder is available only as required and cannot be optional.
 
 #### Scheme
 
@@ -209,7 +208,7 @@ console.log(url); // => "https://example.com/path/to"
 
 #### Userinfo
 
-**一般的に URL にユーザー名とパスワードを使用することはセキュリティ上のリスクがあるため、極力使用しないでください**
+**Using usernames and passwords in URLs is generally a security risk, so please avoid it as much as possible.**
 
 Format: <code>${"userinfo@"}</code> (support placeholder options [Optional])<br />
 Value Type: `{ user?: string; password?: string }`
@@ -229,7 +228,7 @@ const url = urlFrom`https://${"subdomain."}example.com/path/to`({ "subdomain.": 
 console.log(url); // => "https://foo.bar.example.com/path/to"
 ```
 
-セパレータを変更する場合。
+If you want to change the separator:
 
 ```js
 const url = urlFrom`https://${"subdomain."}example.com/path/to`({
@@ -252,18 +251,18 @@ console.log(url); // => "https://localhost:3000/path/to"
 
 #### Value Type
 
-このライブラリでは TypeScript 風の型指定に対応しています。
+This library supports TypeScript-like type specification.
 
-プレースホルダ名に続けて `:string` `:number` を記述すると型を指定できます。  
-型が未指定の場合は `string | number` を受け入れます。
+You can specify the type by appending `:string` or `:number` after the placeholder name.  
+If the type is not specified, it accepts `string | number` as the default type.
 
 ```js
-const url = urlFrom`https://example.com/users/${"userId:string"}`({ userId: "279642" }); // もしも、numberを渡すと型エラーになります
+const url = urlFrom`https://example.com/users/${"userId:string"}`({ userId: "279642" }); // If you pass a number, it will result in a type error
 console.log(url); // => "https://example.com/users/279642"
 ```
 
-[Spread] で使用する場合は `:string[]` `:number[]` を記述してください。  
-型が未指定の場合は `Array<string | number>` を受け入れます。
+When using with [Spread], please use `:string[]` or `:number[]` for array types.  
+If the type is not specified, it accepts `Array<string | number>` as the default type.
 
 ```js
 const url = urlFrom`https://example.com/${"...paths:string[]"}`({ paths: ["path", "to"] });
@@ -272,7 +271,7 @@ console.log(url); // => "https://example.com/path/to"
 
 #### Optional
 
-プレースホルダ名の直後に `?` を記述すると省略可能になります。
+By appending `?` immediately after the placeholder name, it becomes optional.
 
 ```js
 const bindUrl = urlFrom`https://example.com/users/${"userId?"}`; // ${"userId?:string"} is optional string
@@ -282,7 +281,7 @@ console.log(bindUrl({ userId: 279642 })); // => "https://example.com/users/27964
 
 #### Conditional Slash
 
-プレースホルダ文字列の始端か終端、またはその両方に `/` を記述すると、値が埋め込まれたときだけ有効なスラッシュになります。
+By adding `/` at the beginning, end, or both ends of the placeholder string, the slash becomes effective only when a value is embedded.
 
 ```js
 const bindUrl1 = urlFrom`https://example.com/users${"/userId?"}`;
@@ -314,13 +313,13 @@ const url = urlFrom`https://example.com/path/to`({
 console.log(url); // => "https://example.com/path/to?foo=1&bar=a&bar=b"
 ```
 
-[URLSearchParams]のような形式や、文字列形式で指定する方法。
+Ways to specify in the format of [URLSearchParams] or as a string.
 
 ```js
-// リテラル部分に直接指定
+// Directly specified in the literal part
 const bindUrl = urlFrom`https://example.com/?foo=1&bar=2`;
 
-// リテラル部分のQueryStringに同じキーの値を追加
+// Adding values with the same keys to the QueryString in the literal part
 const url2 = bindUrl({
   // Array<[string, Value]>
   "?query": [
@@ -330,10 +329,10 @@ const url2 = bindUrl({
 });
 console.log(url2); // => "https://example.com/?foo=1&bar=2&foo=123&bar=234"
 
-// 文字列で指定(RFC3986でエンコード対象の文字が含まれると警告が出てエンコードされます)
+// Specifying as a string (Warning: If it contains characters that need to be encoded according to RFC3986, it will be encoded)
 const url3 = bindUrl({
   // string
-  "?query": "foo=123&bar=234", // "?foo=123&bar=234" でも同じ結果になります
+  "?query": "foo=123&bar=234", // It will produce the same result even with "?foo=123&bar=234"
 });
 console.log(url3); // => "https://example.com/?foo=123&bar=234"
 ```
@@ -348,7 +347,7 @@ const url = urlFrom`https://example.com/path/to`({ "#fragment": "fragment" });
 console.log(url); // => "https://example.com/path/to#fragment"
 ```
 
-リテラル部分に直接指定する方法。
+Method to directly specify in the literal part.
 
 ```js
 const url = urlFrom`https://example.com/path/to#fragment`();
@@ -357,7 +356,7 @@ console.log(url); // => "https://example.com/path/to#fragment"
 
 ### Type Narrowing
 
-Bind Function の引数をより狭い型にしたい場合は、`narrowing`を使用することで、オプショナルを必須にしたり、各種リテラル型に制限することが可能です。
+If you want Bind Function arguments to be of narrower types, you can use `narrowing` to make optional mandatory or restrict them to various literal types.
 
 ```ts
 const bindUrl = urlFrom`${"scheme:"}//example.com/users/${"userId"}`.narrowing<{
@@ -369,20 +368,20 @@ const url2 = bindUrl({ "scheme:": "https", userId: 279642 }); // ✅
 const url3 = bindUrl({ "scheme:": "ftp", userId: 279642 }); // ❌ TS2322: Type '"ftp"' is not assignable to type '"http" | "https"'.
 ```
 
-**ルール**
+**Rules**
 
-- 元々引数の型に存在する部分が対象になります
-- 元々引数の型を狭められます
-  - オプショナルの型を必須にできます
-  - 必須の型をオプショナルにはできません
+- Only the parts that exist in the original argument type are targeted.
+- The original argument type can be narrowed down.
+  - Optional types can be made mandatory.
+  - Mandatory types cannot be made optional.
 
-#### 特定のキーや Query を必須にする
+#### Making specific keys or QueryParams mandatory
 
 ```ts
 const bindUrl = urlFrom`https://example.com/users/${"userId?"}`.narrowing<{
   userId: number;
   "?query": { foo: string };
-  // 自由なQueryを継承しつつ、一部だけ絞り込む場合
+  // Narrowing down while inheriting free QueryParams
   // "?query": { foo: string } & URLFromQueryParams;
 }>;
 
@@ -390,7 +389,7 @@ const url1 = bindUrl({ userId: 1, "?query": { foo: "bar" } }); // ✅
 const url2 = bindUrl({ userId: 1, "?query": {} }); // ❌ TS2741: Property 'foo' is missing in type '{}' but required in type '{ foo: string; }'.
 ```
 
-#### 特定のキーワードのみ許容する
+### Allowing Only Specific Keywords
 
 ```ts
 const bindUrl = urlFrom`https://example.com/theme/${"theme:string"}`.narrowing<{
@@ -401,7 +400,7 @@ const url1 = bindUrl({ theme: "dark" }); // ✅
 const url2 = bindUrl({ theme: "foo" }); // ❌ TS2322: Type '"foo"' is not assignable to type '"lighter" | "dark"'.
 ```
 
-#### 複数のパターンを許容する
+### Allowing Multiple Patterns
 
 ```ts
 const bindUrl = urlFrom`https://example.com/theme/${"theme:string"}${"/color?:string"}`.narrowing<
@@ -427,7 +426,7 @@ const url4 = bindUrl({ theme: "original" });
 
 #### encodeRFC3986(string)
 
-文字列を[RFC3986]でエンコードします。
+Encodes a string using [RFC3986].
 
 **string**
 
@@ -439,9 +438,9 @@ console.log(encodeRFC3986("!'()*")); // => "%21%27%28%29%2A"
 
 #### stringifyQuery(query, fragment?)
 
-QueryString や Fragment 部分の文字列を生成します。
+Generates a string for the QueryString or Fragment portion.
 
-この関数は何を渡しても必ず先頭に"?"を付けた結果を返すため、"?"が不要な場合は`stringifyQuery(query).slice(1)`とすることで "?" を除いた結果を得られます。
+This function always returns the result with a leading "?" regardless of what is passed. If you don't need the "?", you can use `stringifyQuery(query).slice(1)` to obtain the result without the "?".
 
 **query**
 
@@ -467,7 +466,7 @@ console.log(stringifyQuery({})); // => "?"
 
 #### replaceQuery(url, query?, fragment?)
 
-QueryString や Fragment 部分の置換や削除を行います。
+Performs replacement or deletion of the QueryString or Fragment portion.
 
 **url**
 
@@ -481,12 +480,12 @@ Type: `URLFromQueryParams | QueryDelete`
 
 Type: `string | undefined`
 
-置換する例。
+Replacement example:
 
 ```js
 console.log(replaceQuery("https://example.com?foo=1&bar=2#fragment", { bar: "baz" }, "hash")); // => "https://example.com?foo=1&bar=baz#hash"
 
-// 追記
+// Additional examples
 console.log(replaceQuery("?a=b", { foo: 1 })); // => "?a=b&foo=1"
 console.log(replaceQuery("?a=b", { foo: [1, 2] })); // => "?a=b&foo=1&foo=2"
 console.log(
@@ -497,14 +496,14 @@ console.log(
 ); // => "?a=b&foo=1&foo=2"
 ```
 
-削除する例。
+Deletion example:
 
 ```js
 console.log(replaceQuery("?foo=1&bar=baz#fragment", QueryDelete, "")); // => ""
 console.log(replaceQuery("?foo=1&bar=baz#fragment", { foo: QueryDelete })); // => "?bar=baz#fragment"
 ```
 
-`undefined` `{}` `""` では削除できない点に注意してください。
+Note that deletion cannot be done with `undefined`, `{}`, or `""`.
 
 ```js
 console.log(replaceQuery("?foo=1&bar=baz#fragment", undefined, undefined)); // => "?foo=1&bar=baz#fragment"
@@ -514,18 +513,18 @@ console.log(replaceQuery("?foo=1&bar=baz#fragment", "", undefined)); // => "?foo
 
 ### Special Values
 
-プレースホルダや Query に特殊な値を使用した場合の効果の一覧です。
+A list of effects when using special values in placeholders or queries.
 
-| Type or Value | プレースホルダでの効果 | Query での効果 | 補足                                       |
-| ------------- | ---------------------- | -------------- | ------------------------------------------ |
-| `""`          | Skip                   | `"key="`       | 必須のパスに使用されると例外が投げられます |
-| `number`      | `"0"`                  | `"key=0"`      |                                            |
-| `NaN`         | `"NaN"`                | `"key=NaN"`    | 値として渡されると警告が出ます             |
-| `true`        | -                      | `"key=true"`   | プレースホルダの値には使用できません       |
-| `false`       | -                      | `"key=false"`  | プレースホルダの値には使用できません       |
-| `null`        | Skip                   | `"key"`        | Query ではキーのみで表現されます           |
-| `undefined`   | Skip                   | Skip           |                                            |
-| `QueryDelete` | -                      | Delete         | Query のキー削除用の Symbol です           |
+| Type or Value | Effect of Placeholder | Effect in Query | Supplement                                           |
+| ------------- | --------------------- | --------------- | ---------------------------------------------------- |
+| `""`          | Skip                  | `"key="`        | An exception is thrown when used in a required path. |
+| `number`      | `"0"`                 | `"key=0"`       |                                                      |
+| `NaN`         | `"NaN"`               | `"key=NaN"`     | A warning is issued when passed as a value.          |
+| `true`        | -                     | `"key=true"`    | Cannot be used as a placeholder value.               |
+| `false`       | -                     | `"key=false"`   | Cannot be used as a placeholder value.               |
+| `null`        | Skip                  | `"key"`         | Represented only by the key in the Query.            |
+| `undefined`   | Skip                  | Skip            |                                                      |
+| `QueryDelete` | -                     | Delete          | Symbol for deleting the key in the Query.            |
 
 ```js
 const bindUrl = urlFrom`https://example.com/${"value?"}`;
@@ -549,43 +548,45 @@ console.log(bindUrl({ "?query": { value: undefined } })); // => "https://example
 
 ## Tips
 
-### 例外が出る主なパターンについて
+### Main patterns that cause exceptions
 
-- 全プレースホルダ共通
-  - 必須指定のプレースホルダの値に空文字が渡された場合
-  - 型を無視して値が渡された場合
-- 各プレースホルダ個別
-  - [Scheme Placeholder]の値に許可されない文字が含まれる場合
-  - [SchemeHost Placeholder] or [SchemeHostPath Placeholder]の値に`://`が含まれない場合
-  - [Direct Placeholder]の値に空文字が渡された場合
-  - [Port Placeholder]の値に 0~65535 の範囲外の数値や`NaN`が渡された場合
-- その他
-  - `new URL()` に渡したとき例外を投げる URL を生成しようとした場合
+- Common for all placeholders:
+  - Empty string passed to a required placeholder value.
+  - Value was passed that does not match the type.
+- Individual placeholders:
+  - Invalid characters included in the value of [Scheme Placeholder].
+  - [SchemeHost Placeholder] or [SchemeHostPath Placeholder] does not include `://` in its value.
+  - Empty string passed to the value of [Direct Placeholder].
+  - Value outside the range of 0-65535 or `NaN` is passed to the [Port Placeholder].
+- Others:
+  - When passed to `new URL()`, it tried to generate a URL that would throw an exception.
 
-### 警告が出る主なパターンについて
+### Main patterns for issuing warnings
 
-- リテラル部分
-  - リテラル部分に[RFC3986]のエンコード対象文字列が含まれる場合
-    - 対処法: [Direct Placeholder]で埋め込むようにしてください
-  - リテラル部分の`?=&#`の使用が適切でない場合
-- 全プレースホルダ共通
-  - 各プレースホルダの値として`NaN`が渡された場合 ([Port Placeholder]の場合は例外)
-- 各プレースホルダ個別
-  - [SchemeHost Placeholder] or [SchemeHostPath Placeholder]の値に[RFC3986]のエンコード対象文字列が含まれる場合
-    - 対処法: [SchemeHost Placeholder] or [SchemeHostPath Placeholder]に限って、エンコード対象文字列を含める場合はパーセントエンコーディング(`%HH`)した値を渡してください
-  - [SchemeHost Placeholder] or [SchemeHostPath Placeholder]の値に`?`や`#`が含まれる場合
-- その他
-  - `new URL()` に渡したとき URL の内容が補完される場合
-  - `/` の補完が発生する場合
+- Literal Part
+  - When the literal part contains encoded characters according to [RFC3986]
+    - Solution: Use [Direct Placeholder] to embed such values.
+  - When the usage of `?=&amp;#` in the literal part is inappropriate.
+- Common for All Placeholders
+  - When `NaN` is passed as the value for each placeholder (except for [Port Placeholder]).
+- Individual Placeholders
+  - When the value of [SchemeHost Placeholder] or [SchemeHostPath Placeholder] contains encoded characters according to [RFC3986].
+    - Solution: For [SchemeHost Placeholder] or [SchemeHostPath Placeholder], if you need to include encoded characters, pass the percent-encoded (`%HH`) value.
+  - When the value of [SchemeHost Placeholder] or [SchemeHostPath Placeholder] contains `?` or `#`.
+- Others
+  - When the content of the URL is completed when passed to `new URL()`.
+  - When the completion of `/` occurs.
 
-### リテラル部分に`%`を含めると警告が出ます
+Note: Square brackets [ ] are used to indicate placeholder names in the original text.
 
-パーセントエンコーディング(`%HH`)は[RFC3986]として適切ですが、リテラル部分に使用すると以下の理由により警告を出します。
+### A warning is issued when `%` is included in the literal part
 
-- `%HH`はデコード後にどのような文字列になるか人間にはわかりにくく誤った記述に繋がりやすいため
-- 単一の`%`や不正な形式の`%HH`の検出が必要になり、処理やルールが複雑化するため
+Percent-encoding (`%HH`) is appropriate according to [RFC3986], but a warning is issued when it is used in the literal part for the following reasons:
 
-リテラル部分に`%`を使うシーンでは[Direct Placeholder]を使用してください。
+- `%HH` is not easily understandable to humans in its decoded form and can lead to incorrect representations.
+- Detecting single `%` or malformed `%HH` requires complex processing and rules.
+
+When using `%` in the literal part, please use [Direct Placeholder].
 
 ```js
 // warn: The literal part contains an unencoded path string "%". Received: `https://example.com/emoji/%F0%9F%90%B9`
@@ -596,45 +597,44 @@ console.log(url1); // => "https://example.com/emoji/%25F0%259F%2590%25B9%25"
 console.log(url2); // => "https://example.com/emoji/%F0%9F%90%B9%25"
 ```
 
-### パストラバーサル対策
+### Path Traversal Protection
 
-url-from ではパストラバーサル対策として、動的な埋め込みによって `/./` or `/../` の条件が成立する場合、警告を出して "." を半角スペースに置換します。
+In url-from, as a path traversal protection measure, if the conditions of `/./` or `/../` are satisfied through dynamic embedding, a warning is issued and the "." is replaced with a half-width space.
 
 ```js
-// tagsの二階層下へのパスを想定したテンプレート
+// Assume a path two hierarchy below the tags
 // https://example.com/tags/<tag>/foo
 const bindUrl = urlFrom`https://example.com/tags/${"tag:string"}/foo`;
 
-// 値として "." が渡された場合
-// 通常は想定と違う階層へのパスになってしまいますが... https://example.com/tags/./foo -> https://example.com/tags/foo
+// When "." is passed as a value
+// Normally, it would result in a path to a different hierarchy than intended... https://example.com/tags/./foo -> https://example.com/tags/foo
 // warn: When embedding values in URLs, some dots are replaced with single-byte spaces because we tried to generate paths that include strings indicating the current or parent directory, such as "." or "..".
 const url1 = bindUrl({ tag: "." });
-// 半角スペースに置換されて階層が維持されます
+// The hierarchy is maintained by replacing spaces with single-byte spaces.
 console.log(url1); // => "https://example.com/tags/%20/foo"
 
-// 値として ".." が渡された場合
-// 通常は想定と違う階層へのパスになってしまいますが... https://example.com/tags/../foo -> https://example.com/foo
+// When ".." is passed as a value
+// Normally, it would result in a path to a different hierarchy than intended... https://example.com/tags/../foo -> https://example.com/foo
 // warn: When embedding values in URLs, some dots are replaced with single-byte spaces because we tried to generate paths that include strings indicating the current or parent directory, such as "." or "..".
 const url2 = bindUrl({ tag: ".." });
-// 半角スペースに置換されて階層が維持されます
+// The hierarchy is maintained by replacing spaces with single-byte spaces.
 console.log(url2); // => "https://example.com/tags/%20%20/foo"
 ```
 
-半角スペースに置換する理由は、階層が変わることと、半角スペースに置換することのどちらのリスクが低いかを評価した結果です。
+The reason for replacing with a half-width space is based on evaluating which risk is lower: changing the directory structure or replacing the "." with a half-width space.
 
-- 半角スペースのみのパスに意味を持たせている可能性が低い
-- タグ名等として使用される場合、半角スペースは trim 対象の文字なので、意味を持っている可能性が低い
-- DB 等保存対象と絡む場合、バリデーションで空白のみの文字が通過する可能性が低い
+- It is unlikely that a path consisting only of a half-width space has any meaning.
+- When used as a tag name, a half-width space is a character subject to trimming, so it is unlikely to have any meaning.
+- When it interacts with databases or other storage systems, it is unlikely that a blank-only string would pass through validation.
 
-このように、実装者にとってパストラバーサルによって階層が変わることも、"."が半角スペースに変わることも、どちらも意図しない挙動ではありますが、意図しない挙動の解決策が無いのであればリスクの少ない方が良いという方針です。
+In this way, while both changing the directory structure due to path traversal and replacing "." with a half-width space are unintended behaviors for implementers, if there is no solution to unintended behavior, it is preferable to choose the option with less risk.
 
-**補足**
+**Additional Information**
 
-- `/.../` は有効なパスとなります (ex. [https://en.wikipedia.org/wiki/...](https://en.wikipedia.org/wiki/...) は https://en.wikipedia.org/wiki/Ellipsis のエイリアスです )
-- `/../` を `/%2E%2E/` に変換しても `/../` と同様に解釈されるので無意味です
+- `/.../` is a valid path (e.g., [https://en.wikipedia.org/wiki/...](https://en.wikipedia.org/wiki/...) is an alias for [https://en.wikipedia.org/wiki/Ellipsis](https://en.wikipedia.org/wiki/Ellipsis)).
+- Converting `/../` to `/%2E%2E/` is meaningless because it is interpreted the same as `/../`.
 
-"." が半角スペースに置換されるのは、動的に埋め込まれる値のみです。  
-以下の例のように、リテラルの静的な "." と動的に埋め込まれた "." によって発生する `/../` の場合、リテラルの "." はそのまま残ります。
+The replacement of "." with a half-width space only occurs for dynamically embedded values. In cases like the following example, where the `/../` occurs due to the static literal ".", the literal "." remains unchanged.
 
 ```js
 const bindUrl = urlFrom`https://example.com/dot-files/.${"type:string"}/README.md`;
@@ -644,17 +644,17 @@ console.log(bindUrl({ type: "gitignore" })); // => "https://example.com/dot-file
 console.log(bindUrl({ type: "." })); // => "https://example.com/dot-files/.%20/README.md"
 ```
 
-### 安全の仕組み
+### Security Mechanisms
 
-- url-from の仕組み上、パスやクエリ等全ての部分でエンコード漏れを起こす方法がありません
-- 厳格な型チェックによって不正な値の混入を防げます
-- 改善すべき実装には警告が発せられるため、より適切で安全な実装にブラッシュアップできます
-- パストラバーサル攻撃のリスクがありません
-- 簡潔に記述できるため、可読性の高いコードになります
+- With the url-from mechanism, there is no way to overlook encoding in any part, such as the path or query.
+- Strict type checks prevent the inclusion of invalid values.
+- Warnings are issued for implementations that need improvement, allowing for refinement into more appropriate and secure implementations.
+- There is no risk of path traversal attacks.
+- It enables concise and readable code.
 
 ## NOTE
 
-このドキュメントのサンプルコードは [power-doctest](https://github.com/azu/power-doctest) によってテストされています。
+The sample code in this document has been tested using [power-doctest](https://github.com/azu/power-doctest).
 
 ## LICENSE
 
