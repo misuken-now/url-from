@@ -49,9 +49,9 @@ console.log(url2); // => "https://example.com/tags/%F0%9F%90%B9?foo=%21%27&bar=2
 
 Please also check the following when using this library:
 
-- [Common Patterns for Throwing Exceptions](#common-patterns-for-throwing-exceptions)
-- [Common Patterns for Emitting Warnings](#common-patterns-for-emitting-warnings)
-- [Literal Parts with `%` will Emit Warnings](#literal-parts-with--will-emit-warnings)
+- [Common Patterns for Throwing Exceptions](#main-patterns-that-cause-exceptions)
+- [Common Patterns for Emitting Warnings](#main-patterns-for-issuing-warnings)
+- [Literal Parts with `%` will Emit Warnings](#a-warning-is-issued-when--is-included-in-the-literal-part)
 
 ## API
 
@@ -149,7 +149,8 @@ try {
 Format: <code>${"scheme://host"}</code> or <code>${"scheme://authority"}</code> (support placeholder options [Optional])<br />
 Value Type: `string`
 
-Embeds a string representing the portion from scheme to host (including port). It is useful for switching base URLs depending on the environment.
+- Embeds a string representing the portion from scheme to host (including port).
+- It is useful for switching base URLs depending on the environment.
 
 ```js
 const url = urlFrom`${"scheme://host"}/path/to`({ "scheme://host": "https://example.com" });
@@ -178,7 +179,8 @@ console.log(url); // => "https://example.com/path/to"
 Format: <code>${"scheme://host/path"}</code> or <code>${"scheme://authority/path"}</code><br />
 Value Type: `string`
 
-Embeds a string representing the portion from scheme to host or path. It is useful for switching base URLs depending on the environment.
+- Embeds a string representing the portion from scheme to host or path.
+- It is useful for switching base URLs depending on the environment.
 
 ```js
 const url = urlFrom`${"scheme://host/path"}/to`({ "scheme://host/path": "https://example.com/path" });
@@ -354,7 +356,7 @@ console.log(url); // => "https://example.com/path/to#fragment"
 
 ### Type Narrowing
 
-If you want to narrow down the argument of the Bind Function to a more specific type, you can use `narrowing` to make optionals mandatory or restrict to various literal types.
+If you want Bind Function arguments to be of narrower types, you can use `narrowing` to make optional mandatory or restrict them to various literal types.
 
 ```ts
 const bindUrl = urlFrom`${"scheme:"}//example.com/users/${"userId"}`.narrowing<{
@@ -384,7 +386,42 @@ const bindUrl = urlFrom`https://example.com/users/${"userId?"}`.narrowing<{
 }>;
 
 const url1 = bindUrl({ userId: 1, "?query": { foo: "bar" } }); // ✅
-const url2 = bindUrl({ userId: 1, "?query": {} }); // ❌ TS
+const url2 = bindUrl({ userId: 1, "?query": {} }); // ❌ TS2741: Property 'foo' is missing in type '{}' but required in type '{ foo: string; }'.
+```
+
+### Allowing Only Specific Keywords
+
+```ts
+const bindUrl = urlFrom`https://example.com/theme/${"theme:string"}`.narrowing<{
+  theme: "lighter" | "dark";
+}>;
+
+const url1 = bindUrl({ theme: "dark" }); // ✅
+const url2 = bindUrl({ theme: "foo" }); // ❌ TS2322: Type '"foo"' is not assignable to type '"lighter" | "dark"'.
+```
+
+### Allowing Multiple Patterns
+
+```ts
+const bindUrl = urlFrom`https://example.com/theme/${"theme:string"}${"/color?:string"}`.narrowing<
+  | {
+      theme: "lighter" | "dark";
+    }
+  | {
+      theme: "original";
+      color: "red" | "blue";
+    }
+>;
+
+const url1 = bindUrl({ theme: "lighter" }); // ✅
+const url2 = bindUrl({ theme: "dark" }); // ✅
+const url3 = bindUrl({ theme: "original", color: "red" }); // ✅
+
+// ❌ TS2345: Argument of type '{ theme: "original"; }' is not assignable to parameter of type 'Readonly<{ "?query"?: QueryParams | undefined; "#fragment"?: string | undefined; color?: BindParam<string | null | undefined>; } & ({ theme: "lighter" | "dark"; } | { ...; })>'.
+//        Property 'color' is missing in type '{ theme: "original"; }' but required in type 'Readonly<{ "?query"?: QueryParams | undefined; "#fragment"?: string | undefined; color?: BindParam<string | null | undefined>; } & { theme: "original"; color: "red" | "blue"; }>'.
+const url4 = bindUrl({ theme: "original" });
+```
+
 ### Helper
 
 #### encodeRFC3986(string)
@@ -478,16 +515,16 @@ console.log(replaceQuery("?foo=1&bar=baz#fragment", "", undefined)); // => "?foo
 
 A list of effects when using special values in placeholders or queries.
 
-| Type or Value | Effect of Placeholder | Effect in Query | Supplement |
-| ------------- | ---------------------- | -------------- | ------------------------------------------ |
-| `""`          | Skip                   | `"key="`       | An exception is thrown when used in a required path. |
-| `number`      | `"0"`                  | `"key=0"`      |                                            |
-| `NaN`         | `"NaN"`                | `"key=NaN"`    | A warning is issued when passed as a value.             |
-| `true`        | -                      | `"key=true"`   | Cannot be used as a placeholder value.       |
-| `false`       | -                      | `"key=false"`  | Cannot be used as a placeholder value.       |
-| `null`        | Skip                   | `"key"`        | Represented only by the key in the Query.           |
-| `undefined`   | Skip                   | Skip           |                                            |
-| `QueryDelete` | -                      | Delete         | Symbol for deleting the key in the Query.           |
+| Type or Value | Effect of Placeholder | Effect in Query | Supplement                                           |
+| ------------- | --------------------- | --------------- | ---------------------------------------------------- |
+| `""`          | Skip                  | `"key="`        | An exception is thrown when used in a required path. |
+| `number`      | `"0"`                 | `"key=0"`       |                                                      |
+| `NaN`         | `"NaN"`               | `"key=NaN"`     | A warning is issued when passed as a value.          |
+| `true`        | -                     | `"key=true"`    | Cannot be used as a placeholder value.               |
+| `false`       | -                     | `"key=false"`   | Cannot be used as a placeholder value.               |
+| `null`        | Skip                  | `"key"`         | Represented only by the key in the Query.            |
+| `undefined`   | Skip                  | Skip            |                                                      |
+| `QueryDelete` | -                     | Delete          | Symbol for deleting the key in the Query.            |
 
 ```js
 const bindUrl = urlFrom`https://example.com/${"value?"}`;
@@ -511,18 +548,36 @@ console.log(bindUrl({ "?query": { value: undefined } })); // => "https://example
 
 ## Tips
 
-### Common cases for exceptions
+### Main patterns that cause exceptions
 
 - Common for all placeholders:
   - Empty string passed to a required placeholder value.
-  - Value is passed without considering the type.
+  - Value was passed that does not match the type.
 - Individual placeholders:
   - Invalid characters included in the value of [Scheme Placeholder].
   - [SchemeHost Placeholder] or [SchemeHostPath Placeholder] does not include `://` in its value.
   - Empty string passed to the value of [Direct Placeholder].
   - Value outside the range of 0-65535 or `NaN` is passed to the [Port Placeholder].
 - Others:
-  - Attempting to create a URL that throws an exception when passed to `new URL()`.
+  - When passed to `new URL()`, it tried to generate a URL that would throw an exception.
+
+### Main patterns for issuing warnings
+
+- Literal Part
+  - When the literal part contains encoded characters according to [RFC3986]
+    - Solution: Use [Direct Placeholder] to embed such values.
+  - When the usage of `?=&amp;#` in the literal part is inappropriate.
+- Common for All Placeholders
+  - When `NaN` is passed as the value for each placeholder (except for [Port Placeholder]).
+- Individual Placeholders
+  - When the value of [SchemeHost Placeholder] or [SchemeHostPath Placeholder] contains encoded characters according to [RFC3986].
+    - Solution: For [SchemeHost Placeholder] or [SchemeHostPath Placeholder], if you need to include encoded characters, pass the percent-encoded (`%HH`) value.
+  - When the value of [SchemeHost Placeholder] or [SchemeHostPath Placeholder] contains `?` or `#`.
+- Others
+  - When the content of the URL is completed when passed to `new URL()`.
+  - When the completion of `/` occurs.
+
+Note: Square brackets [ ] are used to indicate placeholder names in the original text.
 
 ### A warning is issued when `%` is included in the literal part
 
@@ -547,22 +602,22 @@ console.log(url2); // => "https://example.com/emoji/%F0%9F%90%B9%25"
 In url-from, as a path traversal protection measure, if the conditions of `/./` or `/../` are satisfied through dynamic embedding, a warning is issued and the "." is replaced with a half-width space.
 
 ```js
-// Assuming a template for a path under the second level of tags
+// Assume a path two hierarchy below the tags
 // https://example.com/tags/<tag>/foo
 const bindUrl = urlFrom`https://example.com/tags/${"tag:string"}/foo`;
 
 // When "." is passed as a value
-// Normally, it would result in a path to a different level than intended... https://example.com/tags/./foo -> https://example.com/tags/foo
+// Normally, it would result in a path to a different hierarchy than intended... https://example.com/tags/./foo -> https://example.com/tags/foo
 // warn: When embedding values in URLs, some dots are replaced with single-byte spaces because we tried to generate paths that include strings indicating the current or parent directory, such as "." or "..".
 const url1 = bindUrl({ tag: "." });
-// The path is maintained with the replaced half-width space
+// The hierarchy is maintained by replacing spaces with single-byte spaces.
 console.log(url1); // => "https://example.com/tags/%20/foo"
 
 // When ".." is passed as a value
-// Normally, it would result in a path to a different level than intended... https://example.com/tags/../foo -> https://example.com/foo
+// Normally, it would result in a path to a different hierarchy than intended... https://example.com/tags/../foo -> https://example.com/foo
 // warn: When embedding values in URLs, some dots are replaced with single-byte spaces because we tried to generate paths that include strings indicating the current or parent directory, such as "." or "..".
 const url2 = bindUrl({ tag: ".." });
-// The path is maintained with the replaced half-width space
+// The hierarchy is maintained by replacing spaces with single-byte spaces.
 console.log(url2); // => "https://example.com/tags/%20%20/foo"
 ```
 
