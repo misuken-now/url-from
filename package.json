@@ -17,7 +17,8 @@
   "typings": "./lib/index.d.ts",
   "files": [
     "lib",
-    "module"
+    "module",
+    "!**/__tests__"
   ],
   "scripts": {
     "build": "yarn clean && yarn build:lib && yarn build:module",
