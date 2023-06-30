@@ -18,8 +18,7 @@ import { replaceQuery } from "./query";
 
 export default function urlFrom<T extends PlaceholderArg = never, U extends keyof NativePlaceholderValueTable = never>(
   rawLiterals: TemplateStringsArray,
-  ...placeholders: [...(readonly ExtractValidPlaceholderSyntax<T, keyof ResolvePlaceholders<T> & string>[])] &
-    [...(U | PlaceholderArg)[]]
+  ...placeholders: [...Array<ExtractValidPlaceholderSyntax<T, keyof ResolvePlaceholders<T> & string> | U | [Value]>]
 ): BindUrl<T> {
   // リテラルに含まれるエンコード対象の文字をエンコード
   const encodedLiterals = resolveLiterals(rawLiterals, placeholders);
