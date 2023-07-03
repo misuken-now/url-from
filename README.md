@@ -11,7 +11,7 @@ A URL generation library that supports type-safe path and query RFC3986 encoding
 - 🔒 Embedding values with type-safe placeholders
 - 🌐 Proper RFC3986 encoding for each component such as path and query
 - 😊 Flexible management of slashes
-- ⛑ Advice through warnings, similar to lint
+- 🧩 Separation of URL definition and generation.
 - 🔱 Support for various formats
   - Absolute URL `https://example.com/`
   - [Protocol-relative URL] `//example.com/`
@@ -550,6 +550,8 @@ console.log(bindUrl({ "?query": { value: undefined } })); // => "https://example
 
 ### Main patterns that cause exceptions
 
+If it is determined that an available URL cannot be generated or is at risk, url-from will throw an exception.
+
 - Common for all placeholders:
   - Empty string passed to a required placeholder value.
   - Value was passed that does not match the type.
@@ -562,6 +564,8 @@ console.log(bindUrl({ "?query": { value: undefined } })); // => "https://example
   - When passed to `new URL()`, it tried to generate a URL that would throw an exception.
 
 ### Main patterns for issuing warnings
+
+If there is a possible mistake or a more appropriate way to write it, url-from will issue a warning to encourage improvement.
 
 - Literal Part
   - When the literal part contains encoded characters according to [RFC3986]
