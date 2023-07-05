@@ -180,6 +180,28 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
   const queryEncodedChars = new Set<string>();
   const fragmentEncodedChars = new Set<string>();
   let isQueryValuePart = false;
+  let authorityComponentAtMarkCount = 0;
+
+  function hasUserinfoPlaceholder(placeholders: PlaceholderArg[]) {
+    return placeholders.some((placeholder) => typeof placeholder === "string" && placeholder.startsWith("userinfo@"));
+  }
+
+  function checkAuthorityAtMark() {
+    authorityComponentAtMarkCount++;
+    // authority componentに"@"が重複する可能性がある時点で警告を出す
+    // urlFrom`https://${"userinfo@?"}example.com@www.example.com/path/to`
+    if (authorityComponentAtMarkCount === 1 && hasUserinfoPlaceholder(placeholders)) {
+      console.warn(
+        `It is incorrect to include "@" in the authority component when using userinfo placeholder. Please remove "@" from the host.`
+      );
+    }
+    // authority componentのリテラル部分で"@"が重複している場合は警告を出す
+    else if (authorityComponentAtMarkCount === 2) {
+      console.warn(
+        'It is dangerous to use multiple "@" in the authority component.\nif you use "@" for user or password, please embed it in a Direct Placeholder.'
+      );
+    }
+  }
 
   const literals: string[] = rawLiterals.map((literal, index) => {
     // "...?" "...#" の単位に分割してエンコード漏れを検査する
@@ -254,7 +276,7 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
           if (literalIndexOfSlash === 0) {
             currentComponent = "authority";
             // authorityコンポーネントは "//" の後から開始するので調整
-            beforeStr += str.slice(0, 2); // schemeコンポーネント
+            beforeStr = str.slice(0, 2); // schemeコンポーネント
             str = str.slice(2); // authorityコンポーネント
           } else {
             currentComponent = "path";
@@ -274,7 +296,12 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
           // 現在のリテラル内に "/" が存在する場合は、それがauthorityコンポーネントとpathコンポーネントの境界になる
           if (hasSlash) {
             // "/" の前はauthorityコンポーネントとして、後はpathコンポーネントとしてエンコードした上でpathコンポーネントに切り替える
-            beforeStr += str.slice(0, literalIndexOfSlash).replace(/[^a-z\d#\-.:?@_~]/giu, (s) => {
+            // NOTE: エンコード対象文字を1文字ずつ扱うため、絵文字等が壊れないようにuフラグが必要
+            beforeStr = str.slice(0, literalIndexOfSlash).replace(/[^a-z\d#\-.:?_~]/giu, (s) => {
+              if (s === "@") {
+                checkAuthorityAtMark();
+                return s;
+              }
               pathEncodedChars.add(s);
               return encodeRFC3986(s);
             });
@@ -297,7 +324,7 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
 
               // currentComponentと整合性が取るため、"/"までの部分は処理済みにして str にはそれ以降のみ残るようにする
               currentComponent = slashes ? "authority" : "path";
-              beforeStr += `${scheme}${slashes}`;
+              beforeStr = `${scheme}${slashes}`;
               return "";
             });
           } else {
@@ -314,6 +341,9 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
           return s;
         }
         if (currentComponent === "authority" && (s === ":" || s === "@")) {
+          if (s === "@") {
+            checkAuthorityAtMark();
+          }
           return s;
         }
         pathEncodedChars.add(s);
