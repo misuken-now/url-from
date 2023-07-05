@@ -1484,6 +1484,28 @@ describe("urlFrom", () => {
       });
       expect(url).toBe(expected);
     });
+
+    it(`userinfo使用時、authorityコンポーネントに "@" が現れたら警告を出すこと`, () => {
+      const bindUrl1 = testWarnMessage(
+        () => urlFrom`https://${"userinfo@?"}example.com@www.example.com/path/to`,
+        [
+          `It is incorrect to include "@" in the authority component when using userinfo placeholder. Please remove "@" from the host.`,
+        ]
+      );
+      expect(bindUrl1()).toBe("https://example.com@www.example.com/path/to");
+      expect(bindUrl1({ "userinfo@": { user: "foo", password: "bar" } })).toBe(
+        "https://foo:bar@example.com@www.example.com/path/to"
+      );
+      const bindUrl2 = testWarnMessage(
+        () => urlFrom`https://${"userinfo@"}example.com@www.example.com/path/to`,
+        [
+          `It is incorrect to include "@" in the authority component when using userinfo placeholder. Please remove "@" from the host.`,
+        ]
+      );
+      expect(bindUrl2({ "userinfo@": { user: "foo", password: "bar" } })).toBe(
+        "https://foo:bar@example.com@www.example.com/path/to"
+      );
+    });
   });
 
   describe("port", () => {
@@ -1566,6 +1588,42 @@ describe("urlFrom", () => {
         const bindUrl = urlFrom`${"scheme:"}//`;
         expect(() => bindUrl({ "scheme:": "https" })).toThrowError(`Invalid URL "https://"`);
       });
+    });
+
+    it(`authorityコンポーネントに "@" が2回以上現れたら警告を出すこと`, () => {
+      const bindUrl1 = testWarnMessage(
+        () => urlFrom`https://user@example.com@www.example.com/path/to`,
+        [
+          `It is dangerous to use multiple "@" in the authority component.\nif you use "@" for user or password, please embed it in a Direct Placeholder.`,
+        ]
+      );
+      expect(bindUrl1()).toBe("https://user@example.com@www.example.com/path/to");
+
+      const bindUrl2 = testWarnMessage(
+        () => urlFrom`https://user@${["example.com"]}@www.example.com/path/to`,
+        [
+          `It is dangerous to use multiple "@" in the authority component.\nif you use "@" for user or password, please embed it in a Direct Placeholder.`,
+        ]
+      );
+      expect(bindUrl2()).toBe("https://user@example.com@www.example.com/path/to");
+    });
+
+    it(`authorityコンポーネントに "@" が2回以上現れたら警告を出すこと`, () => {
+      const bindUrl1 = testWarnMessage(
+        () => urlFrom`https://user@example.com@www.example.com/path/to`,
+        [
+          `It is dangerous to use multiple "@" in the authority component.\nif you use "@" for user or password, please embed it in a Direct Placeholder.`,
+        ]
+      );
+      expect(bindUrl1()).toBe("https://user@example.com@www.example.com/path/to");
+
+      const bindUrl2 = testWarnMessage(
+        () => urlFrom`https://user@${["example.com"]}@www.example.com/path/to`,
+        [
+          `It is dangerous to use multiple "@" in the authority component.\nif you use "@" for user or password, please embed it in a Direct Placeholder.`,
+        ]
+      );
+      expect(bindUrl2()).toBe("https://user@example.com@www.example.com/path/to");
     });
 
     it(`authorityコンポーネントとpathコンポーネントの間にplaceholderが無くてもpathコンポーネントが認識されること`, () => {
