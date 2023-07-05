@@ -179,6 +179,7 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
   const pathEncodedChars = new Set<string>();
   const queryEncodedChars = new Set<string>();
   const fragmentEncodedChars = new Set<string>();
+  let isQueryValuePart = false;
 
   const literals: string[] = rawLiterals.map((literal, index) => {
     // "...?" "...#" の単位に分割してエンコード漏れを検査する
@@ -199,7 +200,7 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
         return str;
       }
 
-      // Query Component
+      // Query Component (strに "#" 以降は含みません)
       if (currentComponent === "query") {
         // QueryString内では "&" "=" はエンコード対象外
         // NOTE: エンコード対象文字を1文字ずつ扱うため、絵文字等が壊れないようにuフラグが必要
@@ -207,17 +208,32 @@ function resolveLiterals(rawLiterals: TemplateStringsArray, placeholders: Placeh
           queryEncodedChars.add(s);
           return encodeRFC3986(s);
         });
-        // ただし連続する "=" は2文字目以降をエンコード
-        str = str.replace(/(=)(=+)/g, (_, eq, value) => {
-          queryEncodedChars.add("=");
-          return `${eq}${encodeRFC3986(value)}`;
+
+        // 値の部分にエンコード漏れの"="が無いか確認 ex. "?key=value=value&key=value=value"
+        // 現在値のパートの場合は最初に現れる "=" もエンコード対象とし、そうでない場合は最初に現れる "=" はエンコード対象外とする。
+        str = str.replace(isQueryValuePart ? /(?=[^=&]*=)[^&]+/g : /=(?=[^=&]*=)[^&]+/g, (s) => {
+          return s.replace(isQueryValuePart ? /=/g : /(?!^)=/g, () => {
+            queryEncodedChars.add("=");
+            return "%3D"; // "="
+          });
         });
+
+        // 現在値のパートの場合、"&"のあとに"="が現れずに終端が来れば値のパートが終了 ex. "&" "value&key"
+        if (isQueryValuePart) {
+          if (/&[^=]*$/.test(str)) {
+            isQueryValuePart = false;
+          }
+        }
+        // 現在値のパートではない場合、"="のあとに"&"が現れずに終端が来れば値のパートが開始 ex. "=" "key=value"
+        else if (/=[^&]*$/.test(str)) {
+          isQueryValuePart = true;
+        }
 
         if (mark === "#") {
           str += mark;
           currentComponent = "hash";
         } else if (mark) {
-          str += "%3F"; // %3F = ?
+          str += "%3F"; // "?"
           queryEncodedChars.add(mark);
         }
         return str;
@@ -687,7 +703,7 @@ function resolveSpreadPaths(value: PathValue, separator: string | undefined, pla
 }
 
 /**
- * パスを正規化する
+ * パスのスラッシュを正規化する
  *
  * 正規化の内容は主にスラッシュの重複除去で、スラッシュが重複している可能性があるのは以下のパターン。
  *

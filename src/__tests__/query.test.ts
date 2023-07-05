@@ -152,19 +152,29 @@ describe("replaceQuery", () => {
           expect(result).toBe(`${basePath}?foo=1%2B%20&ba%20%2Br=2`);
         });
       });
-      describe("イコールの連続に警告を出して補正する", () => {
+      describe("空文字のキーが残ること", () => {
+        it.each([["?=bar"], ["?=bar&=baz"]] as const)(`"%s"`, (query) => {
+          const result = testNotWarnMessage(() => replaceQuery(basePath, query));
+          expect(result).toBe(`${basePath}${query}`);
+        });
+      });
+      describe("イコールのエンコード漏れに警告を出してエンコードすること", () => {
         it.each([
-          [`${basePath}`, "?=1", `${basePath}`, 0, "?="],
-          [`${basePath}`, "?&=2", `${basePath}`, 1, "&="],
-          [`${basePath}`, "?foo=1&=2&bar=3", `${basePath}?foo=1&bar=3`, 6, "&="],
-          [`${basePath}`, "?foo==1", `${basePath}?foo=1`, 4, "=="],
-        ] as const)(`"%s"`, (path, query, expected, index, character) => {
-          const result = testWarnMessage(() => {
-            return replaceQuery(path, query);
-          }, [
-            `Incorrect encoding for string type QueryString. Possible encoding omission. "${query}" index: ${index} "${character}"`,
-          ]);
-          expect(result).toBe(expected);
+          ["?foo==bar", "?foo=%3Dbar", [5]],
+          ["?foo===bar", "?foo=%3D%3Dbar", [5, 6]],
+          ["?foo=bar=baz", "?foo=bar%3Dbaz", [8]],
+          ["?foo==bar==baz", "?foo=%3Dbar%3D%3Dbaz", [5, 9, 10]],
+          // 空のキーも有効
+          ["?==bar&==baz", "?=%3Dbar&=%3Dbaz", [2, 8]],
+        ] as const)(`"%s"`, (query, expectedQuery, expectedWarningIndexes) => {
+          const result = testWarnMessage(
+            () => replaceQuery(basePath, query),
+            expectedWarningIndexes.map(
+              (index) =>
+                `The encoding of the string type QueryString is incorrect; pass an RFC3986 compliant QueryString. "${query}" index: ${index} "="`
+            )
+          );
+          expect(result).toBe(`${basePath}${expectedQuery}`);
         });
       });
     });
@@ -293,6 +303,9 @@ describe("replaceQuery", () => {
   });
 });
 
+function testNotWarnMessage<T>(run: () => T) {
+  return testWarnMessage(() => run(), []);
+}
 function testWarnMessage<T>(run: () => T, messages: readonly string[]) {
   const warn = console.warn;
   const fn = jest.fn();

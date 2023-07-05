@@ -1335,6 +1335,29 @@ describe("urlFrom", () => {
       ] as const)(`"%s" = "%s"`, (url, expected) => {
         expect(url).toBe(expected);
       });
+      it("イコールのエンコード漏れに警告を出してエンコードすること", () => {
+        const bindUrl1 = testWarnMessage(
+          () => urlFrom`?foo=bar=baz&foo=bar=baz`,
+          ['The literal part contains an unencoded query string "=". Received: `?foo=bar=baz&foo=bar=baz`']
+        );
+        expect(bindUrl1()).toBe("?foo=bar%3Dbaz&foo=bar%3Dbaz");
+
+        const bindUrl2 = testWarnMessage(
+          () => urlFrom`?f${["o"]}o=b${["a"]}r=b${["a"]}z&f${["o"]}o=b${["a"]}r=b${["a"]}z`,
+          [
+            'The literal part contains an unencoded query string "=". Received: `?f${["o"]}o=b${["a"]}r=b${["a"]}z&f${["o"]}o=b${["a"]}r=b${["a"]}z`',
+          ]
+        );
+        expect(bindUrl2()).toBe("?foo=bar%3Dbaz&foo=bar%3Dbaz");
+
+        const bindUrl3 = testWarnMessage(
+          () => urlFrom`?${["foo"]}=${["bar"]}=${["baz"]}&${["foo"]}=${["bar"]}=${["baz"]}`,
+          [
+            'The literal part contains an unencoded query string "=". Received: `?${["foo"]}=${["bar"]}=${["baz"]}&${["foo"]}=${["bar"]}=${["baz"]}`',
+          ]
+        );
+        expect(bindUrl3()).toBe("?foo=bar%3Dbaz&foo=bar%3Dbaz");
+      });
     });
     describe("静的なパスと連携", () => {
       it.each([
@@ -1408,19 +1431,29 @@ describe("urlFrom", () => {
           expect(result).toBe(`https://example.com/users/279642/a/b?foo=1%2B%20&ba%20%2Br=2`);
         });
       });
-      describe("イコールの連続に警告を出して補正する", () => {
+      describe("空文字のキーが残ること", () => {
+        it.each([["?=bar"], ["?=bar&=baz"]] as const)(`"%s"`, (query) => {
+          const result = testNotWarnMessage(() => bindUrl({ ...baseParams, "?query": query }));
+          expect(result).toBe(`https://example.com/users/279642/a/b${query}`);
+        });
+      });
+      describe("イコールのエンコード漏れに警告を出してエンコードすること", () => {
         it.each([
-          ["?=1", `https://example.com/users/279642/a/b`, 0, "?="],
-          ["?&=2", `https://example.com/users/279642/a/b`, 1, "&="],
-          ["?foo=1&=2&bar=3", `https://example.com/users/279642/a/b?foo=1&bar=3`, 6, "&="],
-          ["?foo==1", `https://example.com/users/279642/a/b?foo=1`, 4, "=="],
-        ] as const)(`"%s"`, (query, expected, index, character) => {
-          const result = testWarnMessage(() => {
-            return bindUrl({ ...baseParams, "?query": query });
-          }, [
-            `Incorrect encoding for string type QueryString. Possible encoding omission. "${query}" index: ${index} "${character}"`,
-          ]);
-          expect(result).toBe(expected);
+          ["?foo==bar", "?foo=%3Dbar", [5]],
+          ["?foo===bar", "?foo=%3D%3Dbar", [5, 6]],
+          ["?foo=bar=baz", "?foo=bar%3Dbaz", [8]],
+          ["?foo==bar==baz", "?foo=%3Dbar%3D%3Dbaz", [5, 9, 10]],
+          // 空のキーも有効
+          ["?==bar&==baz", "?=%3Dbar&=%3Dbaz", [2, 8]],
+        ] as const)(`"%s"`, (query, expectedQuery, expectedWarningIndexes) => {
+          const result = testWarnMessage(
+            () => bindUrl({ ...baseParams, "?query": query }),
+            expectedWarningIndexes.map(
+              (index) =>
+                `The encoding of the string type QueryString is incorrect; pass an RFC3986 compliant QueryString. "${query}" index: ${index} "="`
+            )
+          );
+          expect(result).toBe(`https://example.com/users/279642/a/b${expectedQuery}`);
         });
       });
     });

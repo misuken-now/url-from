@@ -66,25 +66,20 @@ export function replaceQuery(url: string, query?: QueryParams | QueryDelete, fra
           return encodeRFC3986(str);
         });
 
-        // "="は特定の出現パターンのとき、冗長な記述と判断して削除します。
-        if (newQuery.includes("&=") || newQuery.includes("?=") || newQuery.includes("==")) {
-          const match = newQuery.match(/[?&=]=/i);
-          if (match) {
+        // 値の部分にエンコード漏れの"="が無いか確認
+        // "?*=*=*&"
+        // "?*=*=*#"
+        // "?*=*=*"
+        newQuery = newQuery.replace(/=(?=[^=&#]*=)[^&#]+/g, (s, offset) => {
+          return s.replace(/(?!^)=/g, (str, localOffset) => {
             console.warn(
-              `Incorrect encoding for string type QueryString. Possible encoding omission. "${newQuery}" index: ${match.index} "${match[0]}"`
+              `The encoding of the string type QueryString is incorrect; pass an RFC3986 compliant QueryString. "${query}" index: ${
+                offset + localOffset
+              } "${str}"`
             );
-            newQuery = newQuery
-              // キーの存在しない項目の場合は値ごと除去
-              // "?=1" -> "?"
-              // "?foo=1&=1" -> "?foo=1"
-              // "?foo=1&=2&bar=3" -> "?foo=1&bar=3"
-              .replace(/([?&])=[^&]*/g, (_, s1) => s1)
-              // 連続する"="は正規化
-              // "foo==1" -> "foo=1"
-              .replace(/==+/g, `=`);
-            return generateQuery(baseQuery, newQuery);
-          }
-        }
+            return "%3D";
+          });
+        });
         return generateQuery(baseQuery, newQuery);
       }
 
