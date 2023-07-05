@@ -1,3 +1,9 @@
+#### 0.9.1 (2023-07-05)
+
+##### Bug Fixes
+
+* **authority:**  add warning when duplicating @ in authority component ([aed4f976](https://github.com/misuken-now/url-from/commit/aed4f976886ac1a3611131fc59d3a936b9dd6bb0))
+
 ### 0.9.0 (2023-07-05)
 
 ##### Chores
