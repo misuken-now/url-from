@@ -1,6 +1,6 @@
 {
   "name": "url-from",
-  "version": "0.9.1",
+  "version": "1.0.0",
   "description": "Type-safe URL generator with RFC3986 encoding support",
   "keywords": [
     "url",
