@@ -1,3 +1,13 @@
+## 1.0.0 (2024-11-21)
+
+##### Continuous Integration
+
+*  update target node-version ([d17b0ae1](https://github.com/misuken-now/url-from/commit/d17b0ae15a18a90f6343e08c75990304b9653787))
+
+##### New Features
+
+*  update deps ([bc2f023c](https://github.com/misuken-now/url-from/commit/bc2f023cd0c6b5a5f62f11b91e27a7c32a633a63))
+
 #### 0.9.1 (2023-07-05)
 
 ##### Bug Fixes
