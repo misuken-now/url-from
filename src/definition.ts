@@ -415,8 +415,8 @@ type Helper<BaseParams> = {
       OriginalParams,
       BaseParams
     >
-      ? [Readonly<ConditionalExtends<OriginalParams, BaseParams>>?]
-      : [Readonly<ConditionalExtends<OriginalParams, BaseParams>>]
+      ? [ConditionalExtends<OriginalParams, BaseParams>?]
+      : [ConditionalExtends<OriginalParams, BaseParams>]
   ) => string;
 };
 
