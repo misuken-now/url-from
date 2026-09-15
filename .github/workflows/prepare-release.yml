@@ -1,0 +1,83 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-level:
+        description: Version increment
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+concurrency:
+  group: release-preparation
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Verify workflow ref
+        run: test "$GITHUB_REF" = refs/heads/main
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.14.0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Yarn
+        run: corepack prepare yarn@4.9.2 --activate
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build package
+        run: yarn build
+
+      - name: Test package
+        run: yarn test
+
+      - name: Update changelog
+        run: |
+          case "${{ inputs.release-level }}" in
+            patch) yarn exec changelog -p ;;
+            minor) yarn exec changelog -m ;;
+            major) yarn exec changelog -M ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Bump package version
+        run: yarn version "${{ inputs.release-level }}"
+
+      - name: Create release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          RELEASE_BRANCH="release/v$VERSION-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$RELEASE_BRANCH"
+          git add CHANGELOG.md package.json
+          git diff --cached --check
+          git commit -m "$VERSION"
+          git push origin "$RELEASE_BRANCH"
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$RELEASE_BRANCH" --title "chore: release v$VERSION" --body "Automated $RELEASE_LEVEL release preparation for v$VERSION."
