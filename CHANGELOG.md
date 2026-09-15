@@ -1,3 +1,10 @@
+#### 1.0.1 (2026-09-15)
+
+##### Continuous Integration
+
+*  configure Yarn 4 release automation ([258dfd02](https://github.com/misuken-now/url-from/commit/258dfd02fa5a789848f90137d64b7618102a9c67))
+*  add trusted publishing release workflows ([3db038fc](https://github.com/misuken-now/url-from/commit/3db038fc0e9deadd870888681c9e8ab6288caae4))
+
 ## 1.0.0 (2024-11-21)
 
 ##### Continuous Integration
