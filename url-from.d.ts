@@ -1,0 +1,2 @@
+import { Value, PlaceholderArg, BindUrl, NativePlaceholderValueTable, ExtractValidPlaceholderSyntax, ResolvePlaceholders } from "./definition";
+export default function urlFrom<T extends PlaceholderArg = never, U extends keyof NativePlaceholderValueTable = never>(rawLiterals: TemplateStringsArray, ...placeholders: [...Array<ExtractValidPlaceholderSyntax<T, keyof ResolvePlaceholders<T> & string> | U | [Value]>]): BindUrl<T>;
